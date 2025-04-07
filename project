@@ -1,0 +1,84 @@
+#include <LiquidCrystal.h>
+
+// Define LCD Pins (RS, E, D4, D5, D6, D7)
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+
+const int gasSensor = A1;
+const int buzzer = 8;
+const int button = 12;
+const int ledLow = 9;
+const int ledMedium = 10;
+const int ledHigh = 11;
+
+bool manualMode = false;
+unsigned long lastDebounceTime = 0;
+const int debounceDelay = 200; // 200ms debounce delay
+
+void setup() {
+    pinMode(gasSensor, INPUT);
+    pinMode(buzzer, OUTPUT);
+    pinMode(button, INPUT_PULLUP);
+    pinMode(ledLow, OUTPUT);
+    pinMode(ledMedium, OUTPUT);
+    pinMode(ledHigh, OUTPUT);
+
+    lcd.begin(16, 2);
+    lcd.setCursor(0, 0);
+    lcd.print("Air Quality:");
+
+    Serial.begin(9600);  // ✅ Initialize Serial Monitor
+}
+
+void loop() {
+    int airQuality = random(100, 900);
+    int buttonState = digitalRead(button);
+
+    // ✅ Print sensor value to Serial Monitor
+    Serial.print("Sensor Value: ");
+    Serial.println(airQuality);
+
+    // **Debounce the button**
+    if (buttonState == LOW && (millis() - lastDebounceTime) > debounceDelay) {
+        manualMode = !manualMode;  // Toggle mode
+        lastDebounceTime = millis(); // Update debounce time
+
+        // ✅ Print mode change to Serial Monitor
+        Serial.print("Manual Mode: ");
+        Serial.println(manualMode ? "ON" : "OFF");
+    }
+
+    lcd.setCursor(0, 1);
+
+    if (!manualMode) { 
+        // **Automatic Mode (based on gas sensor)**
+        const int lowThreshold = 200;  // Adjusted from 300
+        const int highThreshold = 700; // Adjusted from 600
+
+        if (airQuality < lowThreshold) {
+            lcd.print("Good      ");
+            Serial.println("Status: Good");
+            digitalWrite(ledLow, HIGH);
+            digitalWrite(ledMedium, LOW);
+            digitalWrite(ledHigh, LOW);
+            digitalWrite(buzzer, LOW);
+        } 
+        else if (airQuality >= lowThreshold && airQuality < highThreshold) {
+            lcd.print("Moderate   ");
+            Serial.println("Status: Moderate");
+            digitalWrite(ledLow, LOW);
+            digitalWrite(ledMedium, HIGH);
+            digitalWrite(ledHigh, LOW);
+            digitalWrite(buzzer, LOW);
+        } 
+        else {
+            lcd.print("Poor      ");
+            Serial.println("Status: Poor");
+            digitalWrite(ledLow, LOW);
+            digitalWrite(ledMedium, LOW);
+            digitalWrite(ledHigh, HIGH);
+            digitalWrite(buzzer, HIGH);
+        }
+    }
+
+    delay(1000);  // 1-second delay for readability in Serial Monitor
+}
